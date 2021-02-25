@@ -51,8 +51,11 @@ typedef struct
 	uint32_t Data;
 } ADCStructure;
 
-ADCStructure  ADCChannel[3] = {0};
+ADCStructure  ADCChannel[2] = {0};
 
+uint8_t ADCMode = 0;
+GPIO_PinState SwitchState[2];
+float ADCOutputConverted = 0b0 ;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -113,6 +116,30 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	  ADCPollingMethodUpdate();
+	  SwitchState[0] = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
+	  if(SwitchState[1] == GPIO_PIN_SET && SwitchState[0] == GPIO_PIN_RESET)
+	  {
+		  if (ADCMode == 0)
+		  {
+			  ADCMode = 1;
+		  }
+		  else if (ADCMode == 1)
+		  {
+		  	  ADCMode = 0;
+		  }
+	  }
+	  SwitchState[1] = SwitchState[0];
+
+	  if (ADCMode == 0)
+	  {
+		  ADCOutputConverted =   0.805 *  ADCChannel[0].Data;           /// 2^16 = 4096 channel -> 3300 / 4096 = 0.805 milli Volt per channel
+	  }
+	  else if (ADCMode == 1)
+	  {
+		  ADCOutputConverted = (((0.805 *(ADCChannel[1].Data))  - 760 )/2.5) + 25 ;  // Voltage/slope(Voltage/Temp) equal to temp
+	  }
+
+
 
 
   }
@@ -288,24 +315,20 @@ void ADCPollingMethodInit()
 	ADCChannel[0].Config.Rank = 1;
 	ADCChannel[0].Config.SamplingTime = ADC_SAMPLETIME_3CYCLES;
 
-	//PA1 - ADC IN1
-	ADCChannel[1].Config.Channel = ADC_CHANNEL_1;
+	//TempSensor - ADC IN?
+	ADCChannel[1].Config.Channel = ADC_CHANNEL_TEMPSENSOR;
 	ADCChannel[1].Config.Rank = 1;
 	ADCChannel[1].Config.SamplingTime = ADC_SAMPLETIME_3CYCLES;
-
-	//PA1 - ADC IN1
-	ADCChannel[2].Config.Channel = ADC_CHANNEL_TEMPSENSOR;
-	ADCChannel[2].Config.Rank = 1;
-	ADCChannel[2].Config.SamplingTime = ADC_SAMPLETIME_3CYCLES;
 	}
 
+//// fixed
 
 void ADCPollingMethodUpdate()
 {
-	for (int i = 0; i < 3 ; i++) //0,1,2
+	if (ADCMode == 0)
 	{
 		//select channel
-		HAL_ADC_ConfigChannel(&hadc1, &ADCChannel[i].Config);
+		HAL_ADC_ConfigChannel(&hadc1, &ADCChannel[0].Config);
 
 		//ADC Sampling , Convert
 		HAL_ADC_Start(&hadc1);
@@ -313,7 +336,24 @@ void ADCPollingMethodUpdate()
 		if(HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK)
 		{
 			//Get Value
-			ADCChannel[i].Data =  HAL_ADC_GetValue(&hadc1);
+			ADCChannel[0].Data =  HAL_ADC_GetValue(&hadc1);
+		}
+		//Stop
+		HAL_ADC_Stop(&hadc1);
+	}
+
+	else if (ADCMode == 1)
+	{
+		//select channel
+		HAL_ADC_ConfigChannel(&hadc1, &ADCChannel[1].Config);
+
+		//ADC Sampling , Convert
+		HAL_ADC_Start(&hadc1);
+		//Wait ADC
+		if(HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK)
+		{
+			//Get Value
+			ADCChannel[1].Data =  HAL_ADC_GetValue(&hadc1);
 		}
 		//Stop
 		HAL_ADC_Stop(&hadc1);
