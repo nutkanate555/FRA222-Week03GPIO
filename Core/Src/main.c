@@ -55,7 +55,11 @@ ADCStructure  ADCChannel[2] = {0};
 
 uint8_t ADCMode = 0;
 GPIO_PinState SwitchState[2];
-float ADCOutputConverted = 0b0 ;
+
+float ADCOutputConverted = 0.0;
+float Calculating_Data = 0.0;
+
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -128,15 +132,18 @@ int main(void)
 		  	  ADCMode = 0;
 		  }
 	  }
+
+	  Calculating_Data = ADCChannel[0].Data / 1.0 ;
+
 	  SwitchState[1] = SwitchState[0];
 
 	  if (ADCMode == 0)
 	  {
-		  ADCOutputConverted =   0.805 *  ADCChannel[0].Data;           /// 2^16 = 4096 channel -> 3300 / 4096 = 0.805 milli Volt per channel
+		  ADCOutputConverted =   0.805 *  Calculating_Data;           /// 2^16 = 4096 channel -> 3300 / 4096 = 0.805 milli Volt per channel
 	  }
 	  else if (ADCMode == 1)
 	  {
-		  ADCOutputConverted = (((0.805 *(ADCChannel[1].Data))  - 760 )/2.5) + 25 ;  // Voltage/slope(Voltage/Temp) equal to temp
+		  ADCOutputConverted = (((0.805 * Calculating_Data)  - 760.0 )/2.5) + 25.0 ;  // Voltage/slope(Voltage/Temp) equal to temp
 	  }
 
 
